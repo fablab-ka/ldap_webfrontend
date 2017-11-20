@@ -35,7 +35,7 @@ class LdapClass:
             "uid": [uid],
             "sn": [name],
             "givenName": [surname],
-            "cn": [surname + name],
+            # "cn": [surname + name],
             "displayName": [surname + " " + name],
             "uidNumber": [str(self.get_next_uid())],
             "gidNumber": [str(self.gid_number)],

@@ -44,12 +44,6 @@ session_opts = {
 app = SessionMiddleware(bottle.app(), session_opts)
 
 
-# ldap = LdapClass("ldap://192.168.1.194", "cn=admin,dc=lab,dc=flka,dc=de",
-#                  "A3X9%mI0", "dc=lab,dc=flka,dc=de")
-
-print(ldap.search_users("(objectClass=posixAccount)"))
-print(ldap.get_next_uid())
-
 @route('/')
 @route('/register')
 def show_reg_form():
@@ -76,6 +70,4 @@ def register():
     return "Registration complete!"
 
 
-
-
-bottle.run(app=app)
+bottle.run(app=app, port=8095)
