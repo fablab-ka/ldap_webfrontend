@@ -70,4 +70,4 @@ def register():
     return "Registration complete!"
 
 
-bottle.run(app=app, port=8095)
+bottle.run(app=app, host='0.0.0.0', port=8095)
