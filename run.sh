@@ -1,3 +1,3 @@
 #!/usr/bin/env bash
-export PYTHONPATH='.'
-python app.py
+#export PYTHONPATH='.'
+python3 app.py

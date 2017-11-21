@@ -1,15 +1,15 @@
 from ldap_class import LdapClass
 import bottle
 from bottle import template, route, request, post
+from gevent import monkey; monkey.patch_all()
 from beaker.middleware import SessionMiddleware
-import ConfigParser
+import configparser
 import io
 import os
 
 # Check if there is already a configurtion file
 if not os.path.isfile("config.ini"):
-    cfgfile = open("config.ini", 'w')
-    Config = ConfigParser.ConfigParser()
+    Config = configparser.ConfigParser()
     Config.add_section('ldap')
     Config.set('ldap', 'server', 'ldap://127.0.0.1')
     Config.set('ldap', 'bind', 'cn=admin,dc=lab,dc=flka,dc=de')
@@ -18,22 +18,22 @@ if not os.path.isfile("config.ini"):
     Config.set('ldap', 'ou_users', 'ou=users')
     Config.set('ldap', 'ou_groups', 'ou=groups')
     Config.set('ldap', 'gid_number', '500')
-    Config.write(cfgfile)
-    cfgfile.close()
+    with open("config.ini", 'w') as cfgfile:
+        Config.write(cfgfile)
 
 # Load the configuration file
 with open("config.ini") as f:
     sample_config = f.read()
-config = ConfigParser.RawConfigParser(allow_no_value=True)
-config.readfp(io.BytesIO(sample_config))
+config = configparser.RawConfigParser()
+config.read("config.ini")
 
-ldap = LdapClass(connection=config.get('ldap', 'server'),
-                 bind_dn=config.get('ldap', 'bind'),
-                 password=config.get('ldap', 'password'),
-                 base_dn=config.get('ldap', 'ldap_base'),
-                 ou_users=config.get('ldap', 'ou_users'),
-                 ou_groups=config.get('ldap', 'ou_groups'),
-                 gidNumber=config.get('ldap', 'gid_number'))
+ldap = LdapClass(connection=config['ldap']['server'],
+                 bind_dn=config['ldap']['bind'],
+                 password=config['ldap']['password'],
+                 base_dn=config['ldap']['ldap_base'],
+                 ou_users=config['ldap']['ou_users'],
+                 ou_groups=config['ldap']['ou_groups'],
+                 gidNumber=config['ldap']['gid_number'])
 
 session_opts = {
     'session.type': 'file',
@@ -70,4 +70,4 @@ def register():
     return "Registration complete!"
 
 
-bottle.run(app=app, host='0.0.0.0', port=8095)
+bottle.run(app=app, host='0.0.0.0', port=8095, server='gevent')
