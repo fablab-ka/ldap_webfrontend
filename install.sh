@@ -1,7 +1,11 @@
 #!/usr/bin/env bash
 
+apt-get install -y python3-pip
+pip3 install -r requirements.txt
+
 #create cert/key files
-#openssl req -new -x509 -keyout server.pem -out server.pem -days 365 -nodes
+openssl req -new -x509 -keyout server.pem -out server.pem -days 365 -nodes
+
 echo "[Unit]
 Description=LDAP Webfrontend at 0.0.0.0:8095
 After=network.target

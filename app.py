@@ -50,18 +50,8 @@ def show_reg_form():
     return template('reg_form.tpl')
 
 
-@route('/test')
-def test():
-    s = bottle.request.environ.get('beaker.session')
-    s['test'] = s.get('test',0) + 1
-    s.save()
-    return 'Test counter: %d' % s['test']
-
-
 @post('/send_reg')
 def register():
-    payload = request.body.read()
-    print(payload)
     name = request.forms['name']
     surname = request.forms['surname']
     email = request.forms['email']
