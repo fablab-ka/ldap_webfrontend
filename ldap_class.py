@@ -32,7 +32,7 @@ class LdapClass:
         uid = str(surname[0] + name).lower()
         # password_sha = "{SHA}" + b64encode(ctx.digest())
 
-        dn = "cn=" + surname + " " + name + "," + self.ou_users + "," + self.ldap_base
+        dn = "cn=" + email + "," + self.ou_users + "," + self.ldap_base
         user = {
             "objectClass": ["inetOrgPerson", "posixAccount"],
             "uid": [uid],
