@@ -19,8 +19,6 @@ class LdapClass:
         self.con = Connection(server=str(connection),user=str(bind_dn)
                               ,password=str(password),auto_bind=True)
 
-        self.add_user("John", "Doe", "john@doe.com", "password")
-
     def search_users(self, search_filter):
         self.con.search(self.ldap_base, search_filter, attributes=ALL_ATTRIBUTES)
         return self.con.entries
@@ -32,19 +30,19 @@ class LdapClass:
         uid = str(surname[0] + name).lower()
         # password_sha = "{SHA}" + b64encode(ctx.digest())
 
-        dn = "cn=" + email + "," + self.ou_users + "," + self.ldap_base
+        dn = ("cn=" + surname + " " + name + "," + self.ou_users + "," + self.ldap_base).encode('utf-8')
         user = {
             "objectClass": ["inetOrgPerson", "posixAccount"],
-            "uid": [uid],
-            "sn": [name],
-            "givenName": [surname],
+            "uid": [uid.encode('utf-8')],
+            "sn": [name.encode('utf-8')],
+            "givenName": [surname.encode('utf-8')],
             # "cn": [surname + name],
-            "displayName": [surname + " " + name],
-            "uidNumber": [str(self.get_next_uid())],
-            "gidNumber": [str(self.gid_number)],
+            "displayName": [(surname + " " + name).encode('utf-8')],
+            "uidNumber": [str(self.get_next_uid()).encode('utf-8')],
+            "gidNumber": [str(self.gid_number).encode('utf-8')],
             "loginShell": ["/bin/bash"],
-            "homeDirectory": ["/home/" + uid],
-            "mail": [email],
+            "homeDirectory": [("/home/" + uid).encode('utf-8')],
+            "mail": [email.encode('utf-8')],
         }
         if self.con.add(dn,attributes=user):
             if self.con.extend.standard.modify_password(user=dn,new_password=password):
