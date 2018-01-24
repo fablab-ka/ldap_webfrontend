@@ -27,14 +27,6 @@ with open("config.ini") as f:
 config = configparser.RawConfigParser()
 config.read("config.ini")
 
-ldap = LdapClass(connection=config['ldap']['server'],
-                 bind_dn=config['ldap']['bind'],
-                 password=config['ldap']['password'],
-                 base_dn=config['ldap']['ldap_base'],
-                 ou_users=config['ldap']['ou_users'],
-                 ou_groups=config['ldap']['ou_groups'],
-                 gidNumber=config['ldap']['gid_number'])
-
 session_opts = {
     'session.type': 'file',
     'session.cookie_expires': 300,
@@ -52,11 +44,24 @@ def show_reg_form():
 
 @post('/send_reg')
 def register():
-    name = request.forms['name']
-    surname = request.forms['surname']
-    email = request.forms['email']
-    password = request.forms['password']
-    ldap.add_user(name=name, surname=surname, email=email, password=password)
+    name = request.forms.name
+    surname = request.forms.surname
+    email = request.forms.email
+    password = request.forms.password
+    print(name)
+    try:
+        ldap = LdapClass(connection=config['ldap']['server'],
+                         bind_dn=config['ldap']['bind'],
+                         password=config['ldap']['password'],
+                         base_dn=config['ldap']['ldap_base'],
+                         ou_users=config['ldap']['ou_users'],
+                         ou_groups=config['ldap']['ou_groups'],
+                         gidNumber=config['ldap']['gid_number'])
+    except:
+        return "Could not connect to LDAP webserver at " + config['ldap']['server']
+    success = ldap.add_user(name=name, surname=surname, email=email, password=password)
+    if not success:
+        return "Could not register User to LDAP Server!"
     return "Registration complete!"
 
 
