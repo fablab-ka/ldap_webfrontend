@@ -1,3 +1,4 @@
+# coding: utf8
 from ldap_class import LdapClass
 import bottle
 from bottle import template, route, request, post
@@ -6,6 +7,7 @@ from beaker.middleware import SessionMiddleware
 import configparser
 import io
 import os
+import sys
 
 # Check if there is already a configurtion file
 if not os.path.isfile("config.ini"):
@@ -48,7 +50,7 @@ def register():
     surname = request.forms.surname
     email = request.forms.email
     password = request.forms.password
-    print(name)
+    uid = request.forms.uid
     try:
         ldap = LdapClass(connection=config['ldap']['server'],
                          bind_dn=config['ldap']['bind'],
@@ -57,11 +59,12 @@ def register():
                          ou_users=config['ldap']['ou_users'],
                          ou_groups=config['ldap']['ou_groups'],
                          gidNumber=config['ldap']['gid_number'])
-    except:
+    except Exception:
+        print("Unexpected error:", sys.exc_info()[0])
         return "Could not connect to LDAP webserver at " + config['ldap']['server']
-    success = ldap.add_user(name=name, surname=surname, email=email, password=password)
-    if not success:
-        return "Could not register User to LDAP Server!"
+    print(ldap.add_user(name=name, surname=surname, email=email, password=password, uid=uid))
+    # if not success:
+    #     return "Could not register User to LDAP Server!"
     return "Registration complete!"
 
 
