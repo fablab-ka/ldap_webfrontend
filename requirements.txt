@@ -3,3 +3,4 @@ configparser
 bottle
 beaker
 gevent
+bottle-login

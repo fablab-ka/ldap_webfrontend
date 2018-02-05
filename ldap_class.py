@@ -24,10 +24,11 @@ class LdapClass:
         self.con = Connection(server=str(connection),user=str(bind_dn)
                               ,password=str(password),auto_bind=True)
 
-
-    def search_users(self, search_filter):
-        self.con.search(self.ldap_base, search_filter, attributes=ALL_ATTRIBUTES)
-        return self.con.entries
+    def search(self, search_filter='(objectClass=posixAccount)', dn=None):
+        if not dn:
+            dn = self.ldap_base
+        self.con.search(dn, search_filter, attributes=ALL_ATTRIBUTES)
+        return self.con.response
 
     def add_user(self, name, surname, email, password, uid):
         name = str(name).strip(' ')
@@ -51,11 +52,14 @@ class LdapClass:
                 return True
         return False
 
-
     def get_next_uid(self):
         uid = 1000
-        for user in self.search_users("(objectClass=posixAccount)"):
-            user_uid = int(str(user['uidNumber'])) #fuck you, ldap3
-            if user_uid > uid:
-                uid = user_uid
+        for user in self.search("(objectClass=posixAccount)"):
+            try:
+                user_uid = int(str(user['uidNumber']))
+                if user_uid > uid:
+                    uid = user_uid
+            except:
+                pass
         return uid + 1
+
