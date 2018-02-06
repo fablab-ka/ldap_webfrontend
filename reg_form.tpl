@@ -15,9 +15,9 @@
     <h4>Password:</h4>
     <input type="password" name="password" required>
     <h4>User name:</h4>
-    <input type="text" name="uid" pattern="[A-Za-z][a-zA-Z_0-9]{5,20}"
+    <input type="text" name="uid" pattern="[A-Za-z][a-zA-Z_0-9]{3,19}"
            title="Please enter a Username with at elast 6 characters and no
-           special symbols, pattern: [A-Za-z][a-zA-Z_0-9]{5,20}" required>
+           special symbols, pattern: [A-Za-z][a-zA-Z_0-9]{3,19}" required>
     <!--<h4>Alias:</h4>-->
     <!--<input type="text" name="alias">-->
     <br>
