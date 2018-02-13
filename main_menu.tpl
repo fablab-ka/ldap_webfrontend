@@ -27,20 +27,20 @@
 <form action="/login">
     <button type="submit">Login</button>
 </form>
-% else:
-<form action="/logout">
-    <button type="submit">Logout</button>
-</form>
-% end
 
 <form action="/register">
     <button type="submit">Register</button>
 </form>
-
+% else:
+<form action="/logout">
+    <button type="submit">Logout</button>
+</form>
 
 <form action="/user_info/{{user}}">
     <button type="submit">Show my Details</button>
 </form>
+% end
+
 % if gid >= 502:
 <form action="/user_list">
     <button type="submit">User List</button>

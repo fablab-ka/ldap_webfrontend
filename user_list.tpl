@@ -31,7 +31,7 @@
     </tr>
   % for user in users:
     <tr onclick="window.location='/user_info/{{user['dn']}}';">
-        <td>{{user['attributes']['cn'][0]}}</td>
+        <td>{{user['attributes']['givenName'][0]}} {{user['attributes']['sn'][0]}}</td>
         <td>{{user['attributes']['mail'][0]}}</td>
         <td>{{user['attributes']['uid'][0]}}</td>
         <td>{{groups[user['attributes']['gidNumber']]}}</td>
