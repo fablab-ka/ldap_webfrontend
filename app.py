@@ -13,17 +13,17 @@ import uuid
 import datetime
 
 # Check if there is already a configurtion file
-if not os.path.isfile("config.ini"):
+if not os.path.isfile("config/config.ini"):
     Config = configparser.RawConfigParser()
     with open("config.ini.example", 'r') as cfgfile:
         Config.read(cfgfile)
-    with open("config.ini", 'w') as cfgfile:
+    with open("config/config.ini", 'w') as cfgfile:
         Config.write(cfgfile)
 
 # Load the configuration file
 config = configparser.RawConfigParser()
 config.read("config.ini.example")
-config.read("config.ini")
+config.read("config/config.ini")
 
 session_opts = {
     'session.type': 'file',

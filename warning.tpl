@@ -5,6 +5,7 @@
 <body>
 
 <h2>{{text}}</h2>
+<br><br>
 
 <form action="/">
     <button type="submit">Zurück</button>
