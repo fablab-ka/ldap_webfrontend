@@ -1,6 +1,6 @@
 <html>
 <head>
-    <title>LDAP User List</title>
+    <title>LDAP Benutzer Panel</title>
     <style>
     table {
         font-family: arial, sans-serif;
@@ -20,24 +20,28 @@
     </style>
 </head>
 <body>
-<h1>User List</h1>
+<h1>Benutzer Liste</h1>
 
 <table>
     <tr>
         <th>Name</th>
         <th>E-Mail</th>
-        <th>User Name</th>
-        <th>Group</th>
+        <th>Benutzername</th>
+        <th>Gruppen</th>
     </tr>
   % for user in users:
     <tr onclick="window.location='/user_info/{{user['dn']}}';">
         <td>{{user['attributes']['givenName'][0]}} {{user['attributes']['sn'][0]}}</td>
         <td>{{user['attributes']['mail'][0]}}</td>
         <td>{{user['attributes']['uid'][0]}}</td>
-        <td>{{groups[user['attributes']['gidNumber']]}}</td>
+        <!--<td>{{groups[user['attributes']['gidNumber']]}}</td>-->
     </tr>
   % end
 </table>
+
+<form action="/">
+    <button type="submit">Zurück</button>
+</form>
 
 </body>
 

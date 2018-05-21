@@ -1,0 +1,15 @@
+[ldap]
+server=ldap://ldap.myserver.de:389
+bind=cn=admin,dc=myserver,dc=de
+password=my_admin_pw
+ldap_base=dc=myserver,dc=de
+ou_users=ou=users
+ou_groups=ou=groups
+
+[mail]
+smtp_server=mail.mailserver.net
+smtp_pw=my_mail_pw
+smtp_mail=noreply@servivemail.de
+pw_link=http://0.0.0.0:8096/pw_reset/{}
+
+

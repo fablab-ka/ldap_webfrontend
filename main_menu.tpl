@@ -1,6 +1,6 @@
 <html>
 <head>
-    <title>LDAP User Info</title>
+    <title>LDAP Benutzer Panel</title>
     <style>
     table {
         font-family: arial, sans-serif;
@@ -21,29 +21,28 @@
 </head>
 <body>
 
-<h1>Please select your option</h1>
+<h1>Aktionen</h1>
 
 % if user == "":
 <form action="/login">
-    <button type="submit">Login</button>
+    <button type="submit">Einlogen</button>
 </form>
 
 <form action="/register">
-    <button type="submit">Register</button>
+    <button type="submit">Registrieren</button>
 </form>
+
+<form action="/pw_reset">
+    <button type="submit">Passwort vergessen</button>
+</form>
+
 % else:
 <form action="/logout">
-    <button type="submit">Logout</button>
+    <button type="submit">Auslogen</button>
 </form>
 
 <form action="/user_info/{{user}}">
-    <button type="submit">Show my Details</button>
-</form>
-% end
-
-% if gid >= 502:
-<form action="/user_list">
-    <button type="submit">User List</button>
+    <button type="submit">Mein Konto</button>
 </form>
 % end
 

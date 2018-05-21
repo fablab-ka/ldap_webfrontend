@@ -1,6 +1,6 @@
 <html>
 <head>
-    <title>LDAP User Info</title>
+    <title>LDAP Benutzer Panel</title>
     <style>
     table {
         font-family: arial, sans-serif;
@@ -20,7 +20,7 @@
     </style>
 </head>
 <body>
-<h1>User Info</h1>
+<h1>Benutzer Informationen</h1>
 
 <table>
     <tr>
@@ -28,11 +28,11 @@
         <th>Value</th>
     </tr>
     <tr>
-        <td>Surname</td>
+        <td>Vorname</td>
         <td>{{user['attributes']['givenName'][0]}}</td>
     </tr>
     <tr>
-        <td>Last Name</td>
+        <td>Nachname</td>
         <td>{{user['attributes']['sn'][0]}}</td>
     </tr>
     <tr>
@@ -40,28 +40,13 @@
         <td>{{user['attributes']['mail'][0]}}</td>
     </tr>
     <tr>
-        <td>Home Directory</td>
-        <td>{{user['attributes']['homedirectory']}}</td>
-    </tr>
-    <tr>
         <td>DN</td>
         <td>{{user['dn']}}</td>
-    </tr>
-    <tr>
-        <td>UID Number</td>
-        <td>{{user['attributes']['uidNumber']}}</td>
-    </tr>
-    <tr>
-        <td>UID</td>
-        <td>{{user['attributes']['uid'][0]}}</td>
-    </tr>    <tr>
-        <td>Group</td>
-        <td>{{groups[user['attributes']['gidNumber']]}}</td>
     </tr>
 </table>
 
 <form action="/">
-    <button type="submit">Back</button>
+    <button type="submit">Zurück</button>
 </form>
 
 </body>

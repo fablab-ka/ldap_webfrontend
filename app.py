@@ -6,28 +6,23 @@ from bottle import template, route, request, redirect, get, post, hook
 from gevent import monkey; monkey.patch_all()
 from beaker.middleware import SessionMiddleware
 import configparser
-import io
 import os
-import sys
+import smtplib
+from email.mime.text import MIMEText
+import uuid
+import datetime
 
 # Check if there is already a configurtion file
 if not os.path.isfile("config.ini"):
-    Config = configparser.ConfigParser()
-    Config.add_section('ldap')
-    Config.set('ldap', 'server', 'ldap://127.0.0.1')
-    Config.set('ldap', 'bind', 'cn=admin,dc=lab,dc=flka,dc=de')
-    Config.set('ldap', 'password', 'secret')
-    Config.set('ldap', 'ldap_base', 'dc=lab,dc=flka,dc=de')
-    Config.set('ldap', 'ou_users', 'ou=users')
-    Config.set('ldap', 'ou_groups', 'ou=groups')
-    Config.set('ldap', 'gid_number', '500')
+    Config = configparser.RawConfigParser()
+    with open("config.ini.example", 'r') as cfgfile:
+        Config.read(cfgfile)
     with open("config.ini", 'w') as cfgfile:
         Config.write(cfgfile)
 
 # Load the configuration file
-with open("config.ini") as f:
-    sample_config = f.read()
 config = configparser.RawConfigParser()
+config.read("config.ini.example")
 config.read("config.ini")
 
 session_opts = {
@@ -45,36 +40,65 @@ def setup_request():
     request.session = request.environ['beaker.session']
 
 
+def LdapAdmin():
+    return LdapClass(connection=config['ldap']['server'],
+                 bind_dn=config['ldap']['bind'],
+                 password=config['ldap']['password'],
+                 base_dn=config['ldap']['ldap_base'],
+                 ou_users=config['ldap']['ou_users'],
+                 ou_groups=config['ldap']['ou_groups'],)
+
+
+def LdapUser(dn, password):
+    return LdapClass(connection=config['ldap']['server'],
+                 bind_dn=dn,
+                 password=password,
+                 base_dn=config['ldap']['ldap_base'],
+                 ou_users=config['ldap']['ou_users'],
+                 ou_groups=config['ldap']['ou_groups'],)
+
+
+def getUsers(identifier):
+    return LdapAdmin().search("(&(objectClass=inetOrgPerson)(|(mail={0})(uid={0})))".format(identifier))
+
+
+def getGroups(dn):
+    groups = LdapAdmin().search("(&(objectClass=groupOfNames)(member={}))".format(dn))
+    user_groups = []
+    for group in groups:
+        user_groups.append(group['attributes']['cn'][0])
+    return user_groups
+
+
+def warning(text):
+    if not text:
+        text = ""
+    return template("warning.tpl", text=text)
+
+
 @get('/login')
 def login():
-    return '''
-            <form action="/login" method="post">
-                Username: <input name="username" type="text" />
-                Password: <input name="password" type="password" />
-                <input value="Login" type="submit" />
-            </form>
-        '''
+    return template("login_form.tpl")
 
 
 @post('/login')
 def do_login():
-    username = request.forms.get('username')
-    password = request.forms.get('password')
-    bind_dn = 'cn='+username+','+config['ldap']['ou_users']+','+config['ldap']['ldap_base']
+    form = request.forms.getunicode
+    username = form('username')
+    password = form('password')
+    ldap_admin = LdapAdmin()
+    users = getUsers(username)
+    if len(users) != 1:
+        return warning("Benutzer nicht gefunden!")
+
+    user_dn = users[0]['dn']
     try:
-        ldap = LdapClass(connection=config['ldap']['server'],
-                     bind_dn=bind_dn,
-                     password=password,
-                     base_dn=config['ldap']['ldap_base'],
-                     ou_users=config['ldap']['ou_users'],
-                     ou_groups=config['ldap']['ou_groups'],
-                     gidNumber=config['ldap']['gid_number'])
-        user = ldap.search(dn=bind_dn)[0]
-        request.session['dn'] = bind_dn
-        request.session['group'] = grouplist(ldap)[user['attributes']['gidNumber']]
-        request.session['gidNumber'] = user['attributes']['gidNumber']
+        LdapUser(user_dn, password)
     except ldap3.core.exceptions.LDAPBindError:
-        return "Invalid Credentials!"
+        return warning("Kein gültiges Passwort!")
+
+    request.session['dn'] = user_dn
+    request.session['id'] = username
     return redirect('/')
 
 
@@ -82,101 +106,159 @@ def do_login():
 def logout():
     if 'dn' in request.session:
         del request.session['dn']
-    if 'group' in request.session:
-        del request.session['group']
-    if 'gidNumber' in request.session:
-        del request.session['gidNumber']
-    return redirect('/login')
+    if 'id' in request.session:
+        del request.session['id']
+
+    return redirect('/')
+
 
 @route('/user_list')
 def show_users():
-    if 'gidNumber' in request.session and request.session['gidNumber'] > 201:
-        ldap = LdapClass(connection=config['ldap']['server'],
-                     bind_dn=config['ldap']['bind'],
-                     password=config['ldap']['password'],
-                     base_dn=config['ldap']['ldap_base'],
-                     ou_users=config['ldap']['ou_users'],
-                     ou_groups=config['ldap']['ou_groups'],
-                     gidNumber=config['ldap']['gid_number'])
-        users = ldap.search('(objectClass=posixAccount)')
-        return template('user_list.tpl', users=users, groups=grouplist(ldap))
-    else:
-        redirect('/login')
+    if "Vorstand" not in getGroups(request.session['dn']):
+        return warning("Zugriff nicht erlaubt!")
+    users = LdapAdmin().search()
+    return template('user_list.tpl', users=users)
 
 
-@route('/user_info/<dn>')
-def user_info(dn):
-    if 'gidNumber' in request.session and (request.session['gidNumber'] > 201 or request.session['dn'] == dn):
-        ldap = LdapClass(connection=config['ldap']['server'],
-                     bind_dn=config['ldap']['bind'],
-                     password=config['ldap']['password'],
-                     base_dn=config['ldap']['ldap_base'],
-                     ou_users=config['ldap']['ou_users'],
-                     ou_groups=config['ldap']['ou_groups'],
-                     gidNumber=config['ldap']['gid_number'])
-        users = ldap.search('(objectClass=posixAccount)', dn=dn)
-        return template('user_info.tpl', user=users[0], groups=grouplist(ldap))
-    else:
-        redirect('/login')
+
+@route('/user_info/<id>')
+def user_info(id):
+    if "Vorstand" in getGroups(request.session['dn']) or id == request.session['id']:
+        users = getUsers(id)
+        if len(users) != 1:
+            return warning("Kein Benutzer mit id {} gefunden!".format(id))
+        return template('user_info.tpl', user=users[0])
+    return warning("Zugriff nicht erlaubt!")
 
 
 @route('/')
 def main_menu():
     user = ""
-    gid = 0
-    if 'dn' in request.session:
-        user = request.session['dn']
-        gid = request.session['gidNumber']
-    return template('main_menu.tpl', user=user, gid=gid)
-
-def grouplist(ldap):
-    groups = ldap.search('(objectClass=posixGroup)')
-    group_list = {}
-    for group in groups:
-        group_list.update({group['attributes']['gidNumber']: group['attributes']['cn'][0]})
-    return group_list
+    if 'id' in request.session:
+        user = request.session['id']
+    return template('main_menu.tpl', user=user)
 
 
 @route('/register')
-def show_reg_form():
+def register():
     return template('reg_form.tpl')
 
+pw_tokens = []
+
+@get('/pw_reset')
+def show_pw_reset():
+    return template("pw_request_form.tpl")
+
+@post('/pw_reset')
+def pw_reset():
+    form = request.forms.getunicode
+    username = form('username')
+    users = getUsers(username)
+    if len(users) != 1:
+        return warning("Konnte Benutzer nicht in der Datenbank finden!")
+    email = users[0]['attributes']['mail'][0]
+
+    #ToDo: Anti-Spam-proof the Email sending
+
+    #set token
+    token = uuid.uuid4().hex
+    pw_tokens.append({
+        'email': email,
+        'token': token,
+        'time': datetime.datetime.now(),
+    })
+
+    reset_link = config['mail']['pw_link'].format(token)
+    msg = MIMEText("Jemand hat die Rücksetzung Ihres Fablab-Karsruhe-Passworts angefordert. "
+                   "Um Ihr Passwort zurückzusetzen, klicken Sie bitte auf folgenden Link: {}"
+                   " Dieser Link ist zwei Stunden lang gültig.".format(reset_link))
+    msg['subject'] = "Zurücksetzen Ihres Passworts"
+    msg['from'] = config['mail']['smtp_mail']
+    msg['to'] = email
+    server = smtplib.SMTP(config['mail']['smtp_server'])
+    server.starttls()
+    server.login(config['mail']['smtp_mail'], config['mail']['smtp_pw'])
+    server.send_message(msg)
+    server.quit()
+    return warning("Email gesendet! Bitte klicken Sie den Link in der Email an!")
+
+@get('/pw_reset/<token>')
+def reset_pw(token):
+    deadline = datetime.datetime.now() - datetime.timedelta(hours=2)
+    for entry in pw_tokens:
+        if entry['time'] < deadline:
+            pw_tokens.remove(entry)
+        else:
+            if entry['token'] == token:
+                return'''
+                    <form action="/new_pw/''' + entry['token'] + '''" method="post">
+                        Neues Passwort: <input name="password" type="password" 
+                        pattern=".{6,20}" title="Please use between 6 and 20 characters." required/>
+                        <input value="Neues Passwort setzen" type="submit" />
+                    </form>
+                    '''
+    return warning("Dieses Token wurde nicht gefunden!")
+
+
+@post('/new_pw/<token>')
+def new_pw(token):
+    form = request.forms.getunicode
+    password = form('password')
+    deadline = datetime.datetime.now() - datetime.timedelta(hours=2)
+    for entry in pw_tokens:
+        if entry['time'] < deadline:
+            pw_tokens.remove(entry)
+        else:
+            if entry['token'] == token:
+                users = getUsers(entry['email'])
+                if len(users) != 1:
+                    return warning("Benutzer wurde nicht gefunden!")
+                LdapAdmin().con.extend.standard.modify_password(user=users[0]['dn'], new_password=password)
+                pw_tokens.remove(entry)
+                return warning("Passwort wurde erfolgreich geändert!")
+    return warning("Token wurde nicht gefunden!")
 
 @post('/send_reg')
-def register():
-    name = request.forms.name
-    surname = request.forms.surname
-    email = request.forms.email
-    password = request.forms.password
-    uid = request.forms.uid
+def do_register():
+    form = request.forms.getunicode
+    name = form('name')
+    surname = form('surname')
+    email = form('email')
+    password = form('password')
+    uid = form('uid')
+    name = str(name).strip(' ')
+    surname = str(surname).strip(' ')
+
+    #check if user already exists
+    if len(getUsers(email)) > 0:
+        return warning("Diese Email-Adresse wird schon benutzt!")
+    if len(getUsers(uid)) > 0:
+        return warning("Dieser Benutzername wird schon benutzt!")
+
+    ldap = LdapAdmin()
+    user_dn = ("cn=" + uid + "," + ldap.ou_users + "," + ldap.ldap_base)
+    user = {
+        "objectClass": ["inetOrgPerson"],
+        "sn": [name],
+        "givenName": [surname],
+        "displayName": [(surname + " " + name)],
+        "mail": [email],  # IA5
+        "uid": [uid],
+    }
+
+    if not ldap.con.add(user_dn, attributes=user):
+        return warning("Der Benutzer konnte nicht angelegt werden!")
+    ldap.con.extend.standard.modify_password(user=user_dn, new_password=password)
+
+    #Try to login to check if everything worked
     try:
-        ldap = LdapClass(connection=config['ldap']['server'],
-                         bind_dn=config['ldap']['bind'],
-                         password=config['ldap']['password'],
-                         base_dn=config['ldap']['ldap_base'],
-                         ou_users=config['ldap']['ou_users'],
-                         ou_groups=config['ldap']['ou_groups'],
-                         gidNumber=config['ldap']['gid_number'])
-    except Exception:
-        print("Unexpected error:", sys.exc_info()[0])
-        return "Could not connect to LDAP webserver at " + config['ldap']['server']
-    ldap.add_user(name=name, surname=surname, email=email, password=password, uid=uid)
-    bind_dn = 'cn=' + email + ',' + config['ldap']['ou_users'] + ',' + config['ldap']['ldap_base']
-    try:
-        ldap = LdapClass(connection=config['ldap']['server'],
-                         bind_dn=bind_dn,
-                         password=password,
-                         base_dn=config['ldap']['ldap_base'],
-                         ou_users=config['ldap']['ou_users'],
-                         ou_groups=config['ldap']['ou_groups'],
-                         gidNumber=config['ldap']['gid_number'])
-        user = ldap.search(dn=bind_dn)[0]
-        request.session['dn'] = bind_dn
-        request.session['group'] = grouplist(ldap)[user['attributes']['gidNumber']]
-        request.session['gidNumber'] = user['attributes']['gidNumber']
+        LdapUser(user_dn, password)
     except ldap3.core.exceptions.LDAPBindError:
-        return "Could not login, invalid Credentials!"
+        return warning("Es gab ein Encoding-Problem mit dem Passwort!")
+
+    request.session['dn'] = user_dn
+    request.session['id'] = uid
     return redirect('/')
 
 
-bottle.run(app=app, host='0.0.0.0', port=8095, server='gevent')
+bottle.run(app=app, host='0.0.0.0', port=8096, server='gevent')
