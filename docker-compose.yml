@@ -1,0 +1,21 @@
+version: '3'
+services:
+  web:
+    build: .
+    ports:
+     - "9002:9002"
+    environment:
+      - VIRTUAL_HOST=ldap.fablab-karlsruhe.de
+      - VIRTUAL_NETWORK=nginx-proxy
+      - VIRTUAL_PORT=9002
+      - LETSENCRYPT_HOST=ldap.fablab-karlsruhe.de
+      - LETSENCRYPT_EMAIL=2.vorstand@fablab-karlsruhe.de
+    volumes:
+      - "./config:/config"
+networks:
+  default:
+    external:
+      name: webproxy
+
+
+
