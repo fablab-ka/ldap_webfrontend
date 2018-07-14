@@ -168,7 +168,7 @@ def pw_reset():
         'time': datetime.datetime.now(),
     })
 
-    reset_link = config['mail']['pw_link'].format(token)
+    reset_link = config['web']['server'] + "/pw_reset/" + token
     msg = MIMEText("Jemand hat die Rücksetzung Ihres Fablab-Karsruhe-Passworts angefordert. "
                    "Um Ihr Passwort zurückzusetzen, klicken Sie bitte auf folgenden Link: {}"
                    " Dieser Link ist zwei Stunden lang gültig.".format(reset_link))
@@ -218,6 +218,29 @@ def new_pw(token):
                 return warning("Passwort wurde erfolgreich geändert!")
     return warning("Token wurde nicht gefunden!")
 
+
+reg_tokens = []
+
+@get ('/delete')
+def del_confirm():
+    return template("user_delete.tpl")
+
+@post('/delete')
+def delete():
+    ldap = LdapAdmin()
+    user_dn = request.session['dn']
+    if ldap.con.delete(dn=user_dn):
+        if 'dn' in request.session:
+            del request.session['dn']
+        if 'id' in request.session:
+            del request.session['id']
+        with open("config/log.txt", "a+") as file:
+            file.write("Account " + user_dn + " gelöscht am " + str(datetime.datetime.now()))
+        return warning("Ihr Benutzerkonto wurde gelöscht.")
+    else:
+        warning("Benutzerkonto konnte nicht gelöscht werden."
+                " Bitte wenden Sie sich an 2.vorstand@fablab-karlsruhe.de")
+
 @post('/send_reg')
 def do_register():
     form = request.forms.getunicode
@@ -228,36 +251,94 @@ def do_register():
     uid = form('uid')
     name = str(name).strip(' ')
     surname = str(surname).strip(' ')
+    token = uuid.uuid4().hex
 
-    #check if user already exists
     if len(getUsers(email)) > 0:
         return warning("Diese Email-Adresse wird schon benutzt!")
     if len(getUsers(uid)) > 0:
         return warning("Dieser Benutzername wird schon benutzt!")
 
+    if len(password) < 6:
+        return warning("Passwort zu kurz!")
+    if len(uid) < 3:
+        return warning("Benutzername zu kurz!")
+    
+
+    deadline = datetime.datetime.now() - datetime.timedelta(hours=24)
+    for entry in reg_tokens:
+        if entry['time'] < deadline:
+            pw_tokens.remove(entry)
+        else:
+            if entry['email'] == email:
+                return warning("Diese Email-Adresse wird schon zur Registration benutzt,"
+                               "bitte klicken Sie auf den Link in Ihrer Email.")
+
+    reg_tokens.append({
+        'name': name,
+        'surname': surname,
+        'email': email,
+        'password': password,
+        'uid': uid,
+        'token': token,
+        'time': datetime.datetime.now(),
+    })
+    reset_link = config['web']['server'] + "/reg/" + token
+    msg = MIMEText("Um Ihre Registration für die IT-Services des Fablab Karlsruhe e.V. "
+                   "abzuschließen, klicken Sie folgenden Link an: {} \n"
+                   "Falls Sie diese Email nicht angefordert haben, melden Sie sich bitte bei"
+                   "2.vorstand@fablab-karlsruhe.de."
+                   "\n\nMit freundlichen Grüßen,"
+                   "\nIhr Fablab karlsruhe".format(reset_link))
+    msg['subject'] = "Registrieren Ihres Fablab Karlsruhe e.V. Accounts"
+    msg['from'] = config['mail']['smtp_mail']
+    msg['to'] = email
+    server = smtplib.SMTP(config['mail']['smtp_server'])
+    server.starttls()
+    server.login(config['mail']['smtp_mail'], config['mail']['smtp_pw'])
+    server.send_message(msg)
+    server.quit()
+    return warning("Email gesendet! Bitte klicken Sie den Link in der Email an!")
+
+
+@get('/reg/<token>')
+def register_part2(token):
+    deadline = datetime.datetime.now() - datetime.timedelta(hours=24)
+    user_info = {}
+    for entry in reg_tokens:
+        if entry['time'] < deadline:
+            pw_tokens.remove(entry)
+        else:
+            if entry['token'] == token:
+                user_info = entry
+                break
+
+    #check if user already exists
+
     ldap = LdapAdmin()
-    user_dn = ("cn=" + uid + "," + ldap.ou_users + "," + ldap.ldap_base)
+    user_dn = ("cn=" + user_info['uid'] + "," + ldap.ou_users + "," + ldap.ldap_base)
     user = {
         "objectClass": ["inetOrgPerson"],
-        "sn": [name],
-        "givenName": [surname],
-        "displayName": [(surname + " " + name)],
-        "mail": [email],  # IA5
-        "uid": [uid],
+        "sn": [user_info['name']],
+        "givenName": [user_info['surname']],
+        "displayName": [(user_info['surname'] + " " + user_info['name'])],
+        "mail": [user_info['email']],  # IA5
+        "uid": [user_info['uid']],
     }
 
     if not ldap.con.add(user_dn, attributes=user):
         return warning("Der Benutzer konnte nicht angelegt werden!")
-    ldap.con.extend.standard.modify_password(user=user_dn, new_password=password)
+    ldap.con.extend.standard.modify_password(user=user_dn, new_password=user_info['password'])
 
     #Try to login to check if everything worked
     try:
-        LdapUser(user_dn, password)
+        LdapUser(user_dn, user_info['password'])
     except ldap3.core.exceptions.LDAPBindError:
         return warning("Es gab ein Encoding-Problem mit dem Passwort!")
 
     request.session['dn'] = user_dn
-    request.session['id'] = uid
+    request.session['id'] = user_info['uid']
+    with open("config/log.txt", "a+") as file:
+        file.write("Account " + user_dn + " erstellt (Datenschutzbestimmung angenommen) am " + str(datetime.datetime.now()))
     return redirect('/')
 
 

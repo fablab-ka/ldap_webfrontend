@@ -42,7 +42,11 @@
 </form>
 
 <form action="/user_info/{{user}}">
-    <button type="submit">Mein Konto</button>
+    <button type="submit">Meine Daten</button>
+</form>
+
+<form action="/delete">
+    <button type="submit">Account löschen</button>
 </form>
 % end
 

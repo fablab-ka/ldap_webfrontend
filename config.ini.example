@@ -10,6 +10,9 @@ ou_groups=ou=groups
 smtp_server=mail.mailserver.net
 smtp_pw=my_mail_pw
 smtp_mail=noreply@servivemail.de
-pw_link=http://0.0.0.0:8096/pw_reset/{}
+
+[web]
+server=http://0.0.0.0:8096
+
 
 

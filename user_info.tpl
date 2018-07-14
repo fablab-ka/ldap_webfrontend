@@ -39,6 +39,10 @@
         <td>E-Mail</td>
         <td>{{user['attributes']['mail'][0]}}</td>
     </tr>
+        <tr>
+        <td>Benutzername</td>
+        <td>{{user['attributes']['uid'][0]}}</td>
+    </tr>
     <tr>
         <td>DN</td>
         <td>{{user['dn']}}</td>

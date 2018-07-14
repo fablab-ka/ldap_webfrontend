@@ -15,8 +15,8 @@
     <h4>Password:</h4>
     <input type="password" name="password" pattern=".{6,20}" title="Please use between 6 and 20 characters." required>
     <h4>Benutzername:</h4>
-    <input type="text" name="uid" pattern="[A-Za-z][a-zA-Z_0-9]{3,19}"
-           title="Please enter a Username with at elast 6 characters and no
+    <input type="text" name="uid" pattern="[A-Za-z][a-zA-Z_0-9]{2,19}"
+           title="Please enter a Username with at elast 3 characters and no
            special symbols, pattern: [A-Za-z][a-zA-Z_0-9]{3,19}" required>
     <h4>Datenschutzbestimmung:</h4>
     <input type="checkbox" name="dsgvo" title="Sie müssen zur Nutzung dieses Dienstes der Datenschutzbestimmung zustimmen" required>
